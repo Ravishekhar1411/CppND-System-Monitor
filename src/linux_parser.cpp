@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "linux_parser.h"
+#include "parser_file.h"
+#include <iostream>
 
 using std::stof;
 using std::string;
@@ -67,10 +69,29 @@ vector<int> LinuxParser::Pids() {
 }
 
 // TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+float LinuxParser::MemoryUtilization() 
+{  
+  float Mem_Total,Mem_Free;
+  Mem_Total = ParserHelper::get_value_of_key<int>("MemTotal:",kMeminfoFilename);
+  Mem_Free = ParserHelper::get_value_of_key<int>("MemFree:",kMeminfoFilename);
+  return((Mem_Total-Mem_Free)/Mem_Total); 
+}
 
 // TODO: Read and return the system uptime
-long LinuxParser::UpTime() { return 0; }
+long LinuxParser::UpTime() 
+{
+    string sLine,uptime;
+  std::ifstream stream(kProcDirectory + kUptimeFilename);
+  
+  if (stream.is_open()) {
+    // Call getline to get first line and just parse first token (uptime)
+    std::getline(stream, sLine);
+    std::istringstream linestream(sLine);
+    linestream >> uptime;
+  }
+  stream.close();
+  return stol(uptime);
+}
 
 // TODO: Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() { return 0; }
@@ -83,16 +104,40 @@ long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
 long LinuxParser::ActiveJiffies() { return 0; }
 
 // TODO: Read and return the number of idle jiffies for the system
-long LinuxParser::IdleJiffies() { return 0; }
+long LinuxParser::IdleJiffies()
+{
+    std::string line,temp;
+    std::ifstream stream(LinuxParser::kProcDirectory + LinuxParser::kStatFilename);
+    long cpu_jiffies[10],index = 0;
+    if (stream.is_open()) {
+        std::getline(stream, line);
+        std::stringstream linestream(line);
+        std::cout<< "IdleJiffies()  : "<<'\n';
+        while(linestream>>temp)
+        {
+            if(temp == "cpu")
+                continue;
+            
+            cpu_jiffies[index++]= std::stoll(temp);
+        }
+    }
+  return cpu_jiffies[CPUStates::kIdle_]+cpu_jiffies[CPUStates::kIOwait_]; 
+}
 
 // TODO: Read and return CPU utilization
 vector<string> LinuxParser::CpuUtilization() { return {}; }
 
 // TODO: Read and return the total number of processes
-int LinuxParser::TotalProcesses() { return 0; }
+int LinuxParser::TotalProcesses() 
+{
+  return ParserHelper::get_value_of_key<int>("processes",kStatFilename);
+}
 
 // TODO: Read and return the number of running processes
-int LinuxParser::RunningProcesses() { return 0; }
+int LinuxParser::RunningProcesses()
+{ 
+  return ParserHelper::get_value_of_key<int>("procs_running",kStatFilename);
+}
 
 // TODO: Read and return the command associated with a process
 // REMOVE: [[maybe_unused]] once you define the function
